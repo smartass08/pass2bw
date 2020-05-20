@@ -1,0 +1,76 @@
+#!/usr/bin/env python
+import csv
+from pathlib import Path
+from dataclasses import dataclass, asdict
+
+import click
+from click_spinner import spinner
+import gnupg
+
+
+HEADER = 'folder,favorite,type,name,notes,fields,login_uri,login_username,login_password,login_totp'
+
+
+@dataclass
+class Entry:
+    folder: str = ''
+    favorite: str = ''
+    type: str = 'login'
+    name: str = ''
+    notes: str = ''
+    fields: str = ''
+    login_uri: str = ''
+    login_username: str = ''
+    login_password: str = ''
+    login_totp: str = ''
+
+
+def decrypt_store(gpg, store, root=None):
+    folder = '' if root is None else str(store.relative_to(root))
+
+    for child in store.iterdir():
+        if child.is_dir():
+            yield from decrypt_store(gpg, child, root or store)
+        elif child.suffix == '.gpg':
+            with child.open('rb') as file:
+                decrypted_data = gpg.decrypt_file(file)
+                if decrypted_data.ok:
+                    data = str(decrypted_data).splitlines()
+                    entry = Entry(
+                        folder=folder,
+                        name=child.stem,
+                        login_password=data[0] if len(data) else '',
+                        login_username=data[1] if len(data) > 1 else '',
+                        notes='\n'.join(data[2:]) if len(data) > 2 else '')
+                    yield entry
+                else:
+                    raise RuntimeError(f"Failed to decrypt '{child}': {decrypted_data.status}")
+
+
+def write_csv(gpg, store, out):
+    writer = csv.DictWriter(out, fieldnames=HEADER.split(','))
+    writer.writeheader()
+    for entry in decrypt_store(gpg, store):
+        writer.writerow(asdict(entry))
+
+
+@click.command()
+@click.option('--out', type=click.File('w'), default='out.csv')
+@click.option('--password-store', default='~/.password-store')
+@click.option('--gpg', default='gpg2')
+@click.option('--gpg-home', type=click.Path(file_okay=False), default='~/.gnupg')
+def export(out, password_store, gpg, gpg_home):
+    password_store = Path(password_store).expanduser()
+    gpg = gnupg.GPG(gpg, gnupghome=Path(gpg_home).expanduser())
+    write_csv(gpg, password_store, out)
+
+
+if __name__ == '__main__':
+    click.echo("Importing... ", nl=False)
+    try:
+        with spinner():
+            n = export()
+    except RuntimeError as error:
+        click.secho(str(error), fg='red')
+    else:
+        click.secho(f"Success! Imported {n} entries.", fg='green')
