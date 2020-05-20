@@ -1,5 +1,6 @@
 # pass2bw
-Utility to export a pass password store to BitWarden 
+
+Utility to export a [pass password store](https://www.passwordstore.org/) to [BitWarden](https://bitwarden.com/).
 
 ## Requirements
 
@@ -15,7 +16,7 @@ To decrypt the password store, simply execute:
 $ ./pass2bw --out=store.csv
 ```
 Then inspect the `store.csv` to check that the export was successful.
-If yes, import the store into bitwarden with:
+If yes, import the store into BitWarden either online or with the CLI: 
 ```bash
 $ bw import bitwardencsv store.csv
 ```
