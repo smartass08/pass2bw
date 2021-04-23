@@ -40,8 +40,15 @@ def decrypt_store(gpg, store, root=None):
                         folder=folder,
                         name=child.stem,
                         login_password=data[0] if len(data) else '',
-                        login_username=data[1] if len(data) > 1 else '',
+                        login_username=data[1] if len(data) > 1 else child.stem,
                         notes='\n'.join(data[2:]) if len(data) > 2 else '')
+                    if entry.login_username.find("otp") != -1:
+                        entry.login_username = child.stem
+                        entry.login_totp = data[1]
+                    if entry.login_username.find("user: ") != -1:
+                        entry.login_username = entry.login_username.replace("user: ", "")
+                    if entry.login_username.find("login: ") != -1:
+                        entry.login_username = entry.login_username.replace("login: ", "")
                     yield entry
                 else:
                     raise RuntimeError(f"Failed to decrypt '{child}': {decrypted_data.status}")
