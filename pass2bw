@@ -42,9 +42,9 @@ def decrypt_store(gpg, store, root=None):
                         login_password=data[0] if len(data) else '',
                         login_username=data[1] if len(data) > 1 else child.stem,
                         notes='\n'.join(data[2:]) if len(data) > 2 else '')
-                        
-                        # put url: into login_uri:
-                        if entry.notes.find("url: ") != -1:
+
+                    # put url: into login_uri:
+                    if entry.notes.find("url: ") != -1:
                         entry.login_uri = re.search("(?P<url>https?://[^\s]+)", entry.notes).group("url")
                     else:
                         entry.login_uri = folder
